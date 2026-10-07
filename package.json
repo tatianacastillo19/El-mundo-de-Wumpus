@@ -1,0 +1,10 @@
+{
+  "name": "mundo-wumpus-agente-logico",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Juego Educativo del Mundo de Wumpus con Agente Lógico",
+  "scripts": {
+    "start": "python -m http.server 8080",
+    "test": "node js/test_simulation.js"
+  }
+}

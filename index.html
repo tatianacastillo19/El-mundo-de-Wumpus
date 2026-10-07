@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>El Mundo de Wumpus - Agente Lógico Basado en Conocimiento</title>
+    <meta name="description" content="Simulación interactiva y educativa del Mundo de Wumpus demostrando el funcionamiento formal de un Agente Lógico con Base de Conocimiento e Inferencia Proposicional.">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <!-- =========================================================================
+         HEADER PRINCIPAL Y ESTADÍSTICAS DEL AGENTE
+         ========================================================================= -->
+    <header class="app-header">
+        <div class="header-brand">
+            <div class="title-group">
+                <h1>Mundo de Wumpus</h1>
+                <p>Hecho por: Tatiana Castillo, Madi Colina y Nicolas Lagos</p>
+            </div>
+        </div>
+
+        <div class="header-stats">
+            <div class="stat-chip score-chip">
+                <span class="stat-label">Puntaje:</span>
+                <span id="statScore" class="stat-val">0</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-label">Pasos:</span>
+                <span id="statStep" class="stat-val">0</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-label">Oro:</span>
+                <span id="statGold" class="stat-val">No</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-label">Flecha:</span>
+                <span id="statArrow" class="stat-val">Disponible</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-label">Wumpus:</span>
+                <span id="statWumpus" class="stat-val">Vivo</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-label">Estado:</span>
+                <span id="statStatus" class="stat-val">Listo</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- =========================================================================
+         CONTENEDOR PRINCIPAL (TABLERO + PANELES DE RAZONAMIENTO)
+         ========================================================================= -->
+    <main class="app-container">
+
+        <!-- COLUMNA IZQUIERDA: CONTROLES Y TABLERO -->
+        <section class="world-column">
+
+            <!-- BARRA DE HERRAMIENTAS Y CONTROLES -->
+            <div class="controls-card">
+                <div class="control-buttons-group">
+                    <button id="btnAuto" class="btn btn-primary">
+                        Ejecutar Agente
+                    </button>
+                    <button id="btnStep" class="btn btn-step">
+                        Paso a Paso
+                    </button>
+                    <button id="btnReset" class="btn btn-secondary" title="Reinicia el agente en el mapa actual">
+                        Reiniciar
+                    </button>
+                    <button id="btnNewRandom" class="btn btn-secondary" title="Genera un nuevo tablero completamente aleatorio">
+                        Nuevo Aleatorio
+                    </button>
+                </div>
+
+                <div class="preset-select-group">
+                    <label for="presetSelect">Escenario:</label>
+                    <select id="presetSelect" class="select-custom">
+                        <option value="classic">Mapa Fijo (Clásico)</option>
+                        <option value="random">Mapa Aleatorio</option>
+                    </select>
+                </div>
+
+                <div class="toggles-group">
+                    <label class="toggle-item toggle-god-mode" title="Revela el mapa completo para explicaciones pedagógicas">
+                        <input type="checkbox" id="chkGodMode">
+                        <span>Modo Dios</span>
+                    </label>
+                    <div class="speed-control">
+                        <span>Velocidad:</span>
+                        <input type="range" id="speedSlider" min="1" max="10" value="6">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABLERO DEL LABERINTO -->
+            <div class="board-wrapper">
+                <div id="gridBoard" class="grid-board">
+                    <!-- Casillas renderizadas dinámicamente por UIController -->
+                </div>
+
+                <!-- LEYENDA DEL TABLERO -->
+                <div class="board-legend">
+                    <div class="legend-item">
+                        <div class="legend-color legend-safe"></div>
+                        <span>SEGURA (OK)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-pit"></div>
+                        <span>HOYO / POSIBLE (P?)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-wumpus"></div>
+                        <span>WUMPUS / POSIBLE (W?)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-unknown"></div>
+                        <span>OCULTO / NIEBLA</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="percept-tag percept-brisa">BRISA</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="percept-tag percept-hedor">HEDOR</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="percept-tag percept-brillo">BRILLO</span>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- COLUMNA DERECHA: PANELES DE INFERENCIA, KB Y REGLAS -->
+        <aside class="panel-column">
+
+            <!-- NAVEGACIÓN DE PESTAÑAS -->
+            <nav class="tab-nav">
+                <button class="tab-btn active" data-tab="tabReasoning">
+                    Razonamiento en Vivo
+                </button>
+                <button class="tab-btn" data-tab="tabKB">
+                    Base de Conocimiento
+                </button>
+                <button class="tab-btn" data-tab="tabRules">
+                    Reglas Lógicas
+                </button>
+                <button class="tab-btn" data-tab="tabHistory">
+                    Historial
+                </button>
+            </nav>
+
+            <!-- CONTENIDO DE LAS PESTAÑAS -->
+            <div class="panel-content">
+
+                <!-- PESTAÑA 1: RAZONAMIENTO EN VIVO -->
+                <div id="tabReasoning" class="tab-pane active">
+                    <div id="reasoningPanelContent">
+                        <!-- Renderizado en tiempo real -->
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 2: BASE DE CONOCIMIENTO -->
+                <div id="tabKB" class="tab-pane">
+                    <div id="kbSummaryPanel">
+                        <!-- Renderizado de hechos probados -->
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 3: REGLAS LÓGICAS -->
+                <div id="tabRules" class="tab-pane">
+                    <div id="rulesPanelContent">
+                        <!-- Renderizado de fórmulas proposicionales -->
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 4: HISTORIAL DE PASOS -->
+                <div id="tabHistory" class="tab-pane">
+                    <div id="historyTimeline" class="history-timeline">
+                        <!-- Historial cronológico -->
+                    </div>
+                </div>
+
+            </div>
+
+        </aside>
+
+    </main>
+
+    <!-- =========================================================================
+         MODAL DE RESULTADO FINAL (VICTORIA / DERROTA)
+         ========================================================================= -->
+    <div id="gameModal" class="modal-backdrop">
+        <div class="modal-card">
+            <h2 id="modalTitle" class="modal-title">Misión Cumplida</h2>
+            <p id="modalDesc" class="modal-desc">El agente ha completado su razonamiento lógico con éxito.</p>
+            
+            <div class="modal-stats">
+                <div class="modal-stat-item">
+                    <div id="modalScore" class="val">984 pts</div>
+                    <div class="lbl">Puntaje Final</div>
+                </div>
+                <div class="modal-stat-item">
+                    <div id="modalSteps" class="val">16</div>
+                    <div class="lbl">Pasos Lógicos</div>
+                </div>
+            </div>
+
+            <button id="modalCloseBtn" class="btn btn-primary" style="width: 100%;">
+                Aceptar
+            </button>
+        </div>
+    </div>
+
+    <!-- BOOTSTRAP DE LA APLICACIÓN -->
+    <script type="module" src="js/app.js"></script>
+
+</body>
+</html>
