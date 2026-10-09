@@ -107,6 +107,8 @@ export class Agent {
             y: startY,
             hasGold: this.hasGold,
             hasArrow: this.hasArrow,
+            orientation: this.orientation,
+            score: this.score,
             isAlive: this.isAlive
         }, perception);
 
@@ -115,8 +117,29 @@ export class Agent {
         // -------------------------------------------------------------
         const actionResult = this.performAction(decision.action, world);
 
-        // Registrar costo de movimiento estándar (-1 punto por acción)
-        this.score -= 1;
+        if (actionResult.shotResult) {
+            if (actionResult.shotResult.hit) {
+                perception.scream = world.getPerception(startX, startY).scream;
+            }
+            this.kb.recordVisit(startX, startY, perception);
+            const shotInference = this.inferenceEngine.infer(
+                startX,
+                startY,
+                perception,
+                actionResult.shotResult
+            );
+            inferenceResult.appliedRules = Array.from(new Set([
+                ...inferenceResult.appliedRules,
+                ...shotInference.appliedRules
+            ]));
+            inferenceResult.deductions.push(...shotInference.deductions);
+            inferenceResult.newSafeCells.push(...shotInference.newSafeCells);
+            inferenceResult.newDangerCells.push(...shotInference.newDangerCells);
+        }
+
+        // El disparo cuesta 10 puntos en total; otras acciones cuestan 1.
+        if (!actionResult.shotResult) this.score -= 1;
+        world.consumeScream();
 
         const stepRecord = {
             stepNumber: this.stepCount,
@@ -141,6 +164,7 @@ export class Agent {
     performAction(action, world) {
         let message = '';
         let soundCue = 'step';
+        let shotResult = null;
 
         switch (action) {
             case Actions.MOVE_UP:
@@ -167,6 +191,16 @@ export class Agent {
                 message = `El agente se desplazó hacia la DERECHA a la casilla (${this.x}, ${this.y}).`;
                 break;
 
+            case Actions.TURN_LEFT:
+            case Actions.TURN_RIGHT: {
+                const orientations = ['ARRIBA', 'DERECHA', 'ABAJO', 'IZQUIERDA'];
+                const currentIndex = orientations.indexOf(this.orientation);
+                const turn = action === Actions.TURN_RIGHT ? 1 : -1;
+                this.orientation = orientations[(currentIndex + turn + orientations.length) % orientations.length];
+                message = `El agente giró hacia ${this.orientation} sin cambiar de casilla.`;
+                break;
+            }
+
             case Actions.GRAB_GOLD:
                 if (world.goldPos && world.goldPos.x === this.x && world.goldPos.y === this.y && !world.goldCollected) {
                     this.hasGold = true;
@@ -181,16 +215,40 @@ export class Agent {
             case Actions.SHOOT_DOWN:
             case Actions.SHOOT_LEFT:
             case Actions.SHOOT_RIGHT:
-                this.hasArrow = false;
-                this.score -= 10;
-                const dir = action.replace('DISPARAR ', '');
-                const hit = world.shootArrow(this.x, this.y, dir);
-                if (hit) {
-                    message = `Flecha disparada hacia ${dir}. Se escucha un grito: ¡El Wumpus ha muerto!`;
-                    soundCue = 'scream';
+                if (!this.hasArrow) {
+                    message = 'El agente ya no tiene flechas.';
                 } else {
-                    message = `Flecha disparada hacia ${dir}, pero no impactó al Wumpus.`;
-                    soundCue = 'arrow_miss';
+                    this.hasArrow = false;
+                    this.score -= 10;
+                    const direction = this.orientation;
+                    const hit = world.shootArrow(this.x, this.y, direction);
+                    shotResult = world.lastShotResult;
+                    if (hit) {
+                        message = `Flecha disparada hacia ${direction}. Se escucha un grito: ¡El Wumpus ha muerto!`;
+                        soundCue = 'scream';
+                    } else {
+                        message = `Flecha disparada hacia ${direction}, pero no impactó al Wumpus.`;
+                        soundCue = 'arrow_miss';
+                    }
+                }
+                break;
+
+            case Actions.SHOOT:
+                if (!this.hasArrow) {
+                    message = 'El agente ya no tiene flechas.';
+                } else {
+                    this.hasArrow = false;
+                    this.score -= 10;
+                    const direction = this.orientation;
+                    const hit = world.shootArrow(this.x, this.y, direction);
+                    shotResult = world.lastShotResult;
+                    if (hit) {
+                        message = `Flecha disparada hacia ${direction}. Se escucha un grito: ¡El Wumpus ha muerto!`;
+                        soundCue = 'scream';
+                    } else {
+                        message = `Flecha disparada hacia ${direction}, pero no impactó al Wumpus.`;
+                        soundCue = 'arrow_miss';
+                    }
                 }
                 break;
 
@@ -232,6 +290,7 @@ export class Agent {
             action,
             message,
             soundCue,
+            shotResult,
             isAlive: this.isAlive,
             status: this.status
         };

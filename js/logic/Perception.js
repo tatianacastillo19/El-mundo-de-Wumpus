@@ -17,6 +17,11 @@ export class Perception {
         this.scream = scream;
     }
 
+    toVector() {
+        return [this.stench, this.breeze, this.glitter, this.bump, this.scream]
+            .map(percept => percept ? 1 : 0);
+    }
+
     /**
      * Devuelve una representación legible de las percepciones activas.
      */

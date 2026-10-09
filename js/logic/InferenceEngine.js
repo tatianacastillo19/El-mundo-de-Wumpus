@@ -21,7 +21,7 @@ export class InferenceEngine {
      * @param {Perception} perception - Percepciones sensoriales actuales
      * @returns {Object} Reporte detallado de inferencias, reglas aplicadas y conclusiones
      */
-    infer(curX, curY, perception) {
+    infer(curX, curY, perception, shotResult = null) {
         const reasoningStep = {
             position: { x: curX, y: curY },
             perceptions: perception,
@@ -32,6 +32,11 @@ export class InferenceEngine {
         };
 
         const adjacents = this.kb.getAdjacent(curX, curY);
+
+        if (shotResult && !shotResult.hit) {
+            this.kb.markNoWumpusAlongPath(shotResult.path);
+            reasoningStep.deductions.push('[Disparo] Sin grito: se descarta Wumpus en toda la trayectoria de la flecha.');
+        }
 
         // =========================================================================
         // 1. REGLA 8: ORO DETECTADO POR BRILLO
@@ -47,9 +52,14 @@ export class InferenceEngine {
         // =========================================================================
         if (perception.scream || this.kb.wumpusDead) {
             if (!this.kb.wumpusDead) {
-                this.kb.markWumpusDead();
+                const killedCell = shotResult && shotResult.hit
+                    ? this.kb.getUniqueWumpusCandidateOnPath(shotResult.path)
+                    : this.kb.exactWumpusLocation;
+                this.kb.markWumpusDead(killedCell);
                 reasoningStep.appliedRules.push(RULES.find(r => r.id === 'R9_DEAD_WUMPUS'));
-                reasoningStep.deductions.push(`[Regla 9] GRITO escuchado: El Wumpus ha muerto. Todas las casillas quedan libres de Wumpus.`);
+                reasoningStep.deductions.push(killedCell
+                    ? `[Regla 9] GRITO escuchado: El Wumpus murió en (${killedCell.x}, ${killedCell.y}); esa casilla queda SEGURA.`
+                    : '[Regla 9] GRITO escuchado: El Wumpus ha muerto. Todas las casillas quedan libres de Wumpus.');
             }
         }
 

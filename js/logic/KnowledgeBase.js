@@ -192,13 +192,132 @@ export class KnowledgeBase {
     /**
      * Notifica la muerte del Wumpus y actualiza todo el conocimiento
      */
-    markWumpusDead() {
+    markWumpusDead(killedCell = null) {
+        const knownWumpusCell = killedCell || this.exactWumpusLocation;
         this.wumpusDead = true;
         this.exactWumpusLocation = null;
+        if (knownWumpusCell) {
+            this.setNoPit(knownWumpusCell.x, knownWumpusCell.y);
+        }
         for (let x = 1; x <= this.width; x++) {
             for (let y = 1; y <= this.height; y++) {
                 this.setNoWumpus(x, y);
             }
+        }
+    }
+
+    getWumpusCandidates() {
+        if (this.wumpusDead) return [];
+        if (this.exactWumpusLocation) return [this.exactWumpusLocation];
+
+        const stenchPositions = Array.from(this.perceptions.entries())
+            .filter(([, perception]) => perception.stench)
+            .map(([key]) => this.parseKey(key));
+        let constrainedKeys = null;
+
+        for (const position of stenchPositions) {
+            const adjacentKeys = new Set(this.getAdjacent(position.x, position.y)
+                .map(cell => this.key(cell.x, cell.y)));
+            constrainedKeys = constrainedKeys === null
+                ? adjacentKeys
+                : new Set([...constrainedKeys].filter(key => adjacentKeys.has(key)));
+        }
+
+        const candidates = [];
+        for (let x = 1; x <= this.width; x++) {
+            for (let y = 1; y <= this.height; y++) {
+                const key = this.key(x, y);
+                if (this.wumpusStatus.get(key) === CellStatus.NO) continue;
+                if (constrainedKeys && !constrainedKeys.has(key)) continue;
+                candidates.push({ x, y });
+            }
+        }
+        return candidates;
+    }
+
+    getWumpusProbability(x, y) {
+        const candidates = this.getWumpusCandidates();
+        if (candidates.length === 0) return 0;
+        return candidates.some(cell => cell.x === x && cell.y === y)
+            ? 1 / candidates.length
+            : 0;
+    }
+
+    getPitProbability(x, y, prior = 0.2) {
+        const targetStatus = this.pitStatus.get(this.key(x, y));
+        if (targetStatus === CellStatus.NO) return 0;
+        if (targetStatus === CellStatus.KNOWN_YES) return 1;
+
+        return this.getPitEventProbability(hasPit => hasPit(x, y), prior);
+    }
+
+    getPitEventProbability(isEventTrue, prior) {
+
+        const uncertainCells = [];
+        for (let gx = 1; gx <= this.width; gx++) {
+            for (let gy = 1; gy <= this.height; gy++) {
+                const status = this.pitStatus.get(this.key(gx, gy));
+                if (status !== CellStatus.NO && status !== CellStatus.KNOWN_YES) {
+                    uncertainCells.push({ x: gx, y: gy });
+                }
+            }
+        }
+
+        if (uncertainCells.length > 20) return prior;
+
+        const variableIndexes = new Map(uncertainCells.map((cell, index) => [
+            this.key(cell.x, cell.y), index
+        ]));
+        const assignmentCount = 1 << uncertainCells.length;
+        let totalWeight = 0;
+        let targetWeight = 0;
+
+        for (let mask = 0; mask < assignmentCount; mask++) {
+            let weight = 1;
+            for (let index = 0; index < uncertainCells.length; index++) {
+                weight *= mask & (1 << index) ? prior : 1 - prior;
+            }
+            if (weight === 0) continue;
+
+            const hasPit = (cellX, cellY) => {
+                const key = this.key(cellX, cellY);
+                const status = this.pitStatus.get(key);
+                if (status === CellStatus.KNOWN_YES) return true;
+                if (status === CellStatus.NO) return false;
+                const index = variableIndexes.get(key);
+                return index !== undefined && Boolean(mask & (1 << index));
+            };
+
+            let consistent = true;
+            for (const [perceptionKey, perception] of this.perceptions.entries()) {
+                if (!consistent) break;
+                const position = this.parseKey(perceptionKey);
+                const adjacentHasPit = this.getAdjacent(position.x, position.y)
+                    .some(cell => hasPit(cell.x, cell.y));
+                if (adjacentHasPit !== perception.breeze) {
+                    consistent = false;
+                    break;
+                }
+            }
+            if (!consistent) continue;
+
+            totalWeight += weight;
+            if (isEventTrue(hasPit)) targetWeight += weight;
+        }
+
+        return totalWeight > 0 ? targetWeight / totalWeight : prior;
+    }
+
+    getUniqueWumpusCandidateOnPath(path) {
+        const pathKeys = new Set(path.map(cell => this.key(cell.x, cell.y)));
+        const candidatesOnPath = this.getWumpusCandidates()
+            .filter(cell => pathKeys.has(this.key(cell.x, cell.y)));
+        return candidatesOnPath.length === 1 ? candidatesOnPath[0] : null;
+    }
+
+    markNoWumpusAlongPath(path) {
+        for (const cell of path) {
+            this.setNoWumpus(cell.x, cell.y);
         }
     }
 

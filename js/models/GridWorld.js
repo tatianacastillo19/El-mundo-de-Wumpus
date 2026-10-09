@@ -23,6 +23,7 @@ export class GridWorld {
         this.startPos = { x: 1, y: 1 };
         
         this.wumpusScreamHeard = false;
+        this.lastShotResult = null;
     }
 
     /**
@@ -78,19 +79,17 @@ export class GridWorld {
         // Brillo: si el oro está en esta casilla y no ha sido recogido
         const glitter = !this.goldCollected && this.goldPos && (this.goldPos.x === x && this.goldPos.y === y);
 
-        // Grito: si el Wumpus acaba de morir
-        const scream = this.wumpusScreamHeard;
-        if (this.wumpusScreamHeard) {
-            this.wumpusScreamHeard = false; // Solo se percibe inmediatamente tras el disparo
-        }
-
         return new Perception({
             stench: Boolean(stench),
             breeze: Boolean(breeze),
             glitter: Boolean(glitter),
             bump: Boolean(bump),
-            scream: Boolean(scream)
+            scream: this.wumpusScreamHeard
         });
+    }
+
+    consumeScream() {
+        this.wumpusScreamHeard = false;
     }
 
     /**
@@ -105,15 +104,18 @@ export class GridWorld {
         };
 
         const delta = deltas[direction];
+        this.lastShotResult = { direction, path: [], hit: false };
         if (!delta) return false;
 
         let curX = fromX + delta.dx;
         let curY = fromY + delta.dy;
 
         while (this.isValid(curX, curY)) {
+            this.lastShotResult.path.push({ x: curX, y: curY });
             if (this.wumpusAlive && this.wumpusPos && this.wumpusPos.x === curX && this.wumpusPos.y === curY) {
                 this.wumpusAlive = false;
                 this.wumpusScreamHeard = true;
+                this.lastShotResult.hit = true;
                 return true; // Wumpus eliminado
             }
             curX += delta.dx;
@@ -180,6 +182,62 @@ export class GridWorld {
             GridWorld.key(2, 1),
             GridWorld.key(2, 3),
             GridWorld.key(4, 1)
+        ]);
+        this.startPos = { x: 1, y: 1 };
+        this.wumpusScreamHeard = false;
+    }
+
+    /**
+     * Cargar mapa predefinido: Wumpus inmediatamente arriba del inicio
+     */
+    loadPresetWumpusAboveStart() {
+        this.width = 4;
+        this.height = 4;
+        this.wumpusPos = { x: 1, y: 2 };
+        this.wumpusAlive = true;
+        this.goldPos = { x: 2, y: 3 };
+        this.goldCollected = false;
+        this.pits = new Set([
+            GridWorld.key(3, 1),
+            GridWorld.key(3, 3),
+            GridWorld.key(4, 4)
+        ]);
+        this.startPos = { x: 1, y: 1 };
+        this.wumpusScreamHeard = false;
+    }
+
+    /**
+     * Cargar mapa predefinido: Hoyo inmediatamente arriba del inicio
+     */
+    loadPresetPitAboveStart() {
+        this.width = 4;
+        this.height = 4;
+        this.wumpusPos = { x: 3, y: 3 };
+        this.wumpusAlive = true;
+        this.goldPos = { x: 4, y: 4 };
+        this.goldCollected = false;
+        this.pits = new Set([
+            GridWorld.key(1, 2),
+            GridWorld.key(3, 1),
+            GridWorld.key(4, 2)
+        ]);
+        this.startPos = { x: 1, y: 1 };
+        this.wumpusScreamHeard = false;
+    }
+
+    loadPresetRetreat() {
+        this.width = 4;
+        this.height = 4;
+        this.wumpusPos = { x: 4, y: 4 };
+        this.wumpusAlive = true;
+        this.goldPos = { x: 4, y: 3 };
+        this.goldCollected = false;
+        this.pits = new Set([
+            GridWorld.key(3, 3),
+            GridWorld.key(2, 3),
+            GridWorld.key(2, 2),
+            GridWorld.key(1, 4),
+            GridWorld.key(3, 2)
         ]);
         this.startPos = { x: 1, y: 1 };
         this.wumpusScreamHeard = false;

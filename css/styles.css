@@ -299,6 +299,16 @@ body {
     border-color: var(--primary);
 }
 
+.btn-generate {
+    display: none;
+    padding: 0.4rem 0.65rem;
+    font-size: 0.75rem;
+}
+
+.btn-generate.is-visible {
+    display: inline-flex;
+}
+
 .toggles-group {
     display: flex;
     align-items: center;

@@ -47,7 +47,7 @@ export class UIController {
         this.btnAuto = document.getElementById('btnAuto');
         this.btnStep = document.getElementById('btnStep');
         this.btnReset = document.getElementById('btnReset');
-        this.btnNewRandom = document.getElementById('btnNewRandom');
+        this.btnGenerate = document.getElementById('btnGenerate');
         this.presetSelect = document.getElementById('presetSelect');
         this.chkGodMode = document.getElementById('chkGodMode');
         this.speedSlider = document.getElementById('speedSlider');
@@ -71,10 +71,7 @@ export class UIController {
         this.btnAuto.addEventListener('click', () => this.toggleAutoRun());
         this.btnStep.addEventListener('click', () => this.stepOnce());
         this.btnReset.addEventListener('click', () => this.resetSimulation());
-        this.btnNewRandom.addEventListener('click', () => {
-            this.presetSelect.value = 'random';
-            this.loadPreset('random');
-        });
+        this.btnGenerate.addEventListener('click', () => this.loadPreset('random'));
 
         // Selector de mapas / escenarios
         this.presetSelect.addEventListener('change', (e) => {
@@ -108,6 +105,11 @@ export class UIController {
         this.modalCloseBtn.addEventListener('click', () => {
             this.modal.classList.remove('open');
         });
+        this.updateGenerateButtonVisibility();
+    }
+
+    updateGenerateButtonVisibility() {
+        this.btnGenerate.classList.toggle('is-visible', this.presetSelect.value === 'random');
     }
 
     switchTab(tabId) {
@@ -125,8 +127,15 @@ export class UIController {
             this.world.loadPresetClassic();
         } else if (presetName === 'random') {
             this.world.generateRandom();
+        } else if (presetName === 'map3') {
+            this.world.loadPresetWumpusAboveStart();
+        } else if (presetName === 'map4') {
+            this.world.loadPresetPitAboveStart();
+        } else if (presetName === 'retreat') {
+            this.world.loadPresetRetreat();
         }
         this.agent.reset(1, 1, this.world.width, this.world.height);
+        this.updateGenerateButtonVisibility();
         this.updateUI();
     }
 
@@ -135,6 +144,12 @@ export class UIController {
         const currentPreset = this.presetSelect.value;
         if (currentPreset === 'classic') {
             this.world.loadPresetClassic();
+        } else if (currentPreset === 'map3') {
+            this.world.loadPresetWumpusAboveStart();
+        } else if (currentPreset === 'map4') {
+            this.world.loadPresetPitAboveStart();
+        } else if (currentPreset === 'retreat') {
+            this.world.loadPresetRetreat();
         }
         // En mapa aleatorio o fijo, vuelve a colocar al agente al inicio (1,1) con la KB limpia
         this.agent.reset(1, 1, this.world.width, this.world.height);

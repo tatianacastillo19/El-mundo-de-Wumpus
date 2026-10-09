@@ -68,17 +68,18 @@
                     <button id="btnReset" class="btn btn-secondary" title="Reinicia el agente en el mapa actual">
                         Reiniciar
                     </button>
-                    <button id="btnNewRandom" class="btn btn-secondary" title="Genera un nuevo tablero completamente aleatorio">
-                        Nuevo Aleatorio
-                    </button>
                 </div>
 
                 <div class="preset-select-group">
                     <label for="presetSelect">Escenario:</label>
                     <select id="presetSelect" class="select-custom">
                         <option value="classic">Mapa Fijo (Clásico)</option>
+                        <option value="map3">Mapa Fijo (Wumpus arriba del inicio)</option>
+                        <option value="map4">Mapa Fijo (Hoyo arriba del inicio)</option>
+                        <option value="retreat">Mapa Fijo (Retirada)</option>
                         <option value="random">Mapa Aleatorio</option>
                     </select>
+                    <button id="btnGenerate" class="btn btn-secondary btn-generate" type="button">Generar</button>
                 </div>
 
                 <div class="toggles-group">
